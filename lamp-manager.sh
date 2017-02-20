@@ -3,24 +3,19 @@
 #DOMAIN=$1
 
 
-pipe=/com/php-apache
-svndir=/svn
+export WEBDIR=/opt/backup/web
+export MYSQLDIR=/opt/backup/mysql
 
-export MSQL="mysql -uroot -p$MYSQL_ROOT_PASSWORD -h127.0.0.1 -e"
-export WP="wp --allow-root --path=$svndir/web/"
+export MSQL="mysql -uroot -p$MARIADB_PASSWORD -h$MARIADB_HOST -e"
+export WP="wp --allow-root --path=$WEBDIR"
 
 function init_from_backup
 {
-	echo test
-	WEBDIR=/opt/backup/web
-	MYSQLDIR=/opt/backup/mysql
-	mkdir -p /opt/backup/web /opt/backup/mysql
+	mkdir -p $WEBDIR $MYSQLDIR
 	cd /opt/backup
 
-	download_backup_dummy
+	download_backup
 
-#	echo "Creating folder structure at $SVNDIR/$PORTAL"
-#	mkdir $SVNDIR/$PORTAL/ $SVNDIR/$PORTAL/web $SVNDIR/$PORTAL/mysql $SVNDIR/$PORTAL/com
 	echo "Unzipping backup to $WEBDIR"
 	unzip *.zip -d $WEBDIR
 
@@ -37,9 +32,9 @@ function init_from_backup
 	fi
 
 	echo "Replacing strings in config files"
-	sed -i s/localhost/127.0.0.1/g wp-config.php
-	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/svn\\/web\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
-	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/svn\\/web\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
+	sed -i s/localhost/$MARIADB_HOST/g wp-config.php
+	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/opt\\/backup\\/web\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
+	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/opt\\/backup\\/web\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
 	echo "Linking uploads direcorty to live site"
 	(echo "#route all access to downloads directory to real site
@@ -58,7 +53,11 @@ function download_backup
 {
 	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
 	FILEINFO="$(gdrive list -q " '$FOLDERID' in parents" --no-header | head -n1)"
+#	FILEDATE=$(echo $FILEINFO | awk '{print $5;}')
 	FILEID=$(echo $FILEINFO | awk '{print $1;}')
+	
+	echo "Downloading: $FILEINFO"
+
 	gdrive download $FILEID
 
 	if ! [ "$?" -eq 0 ]; then
@@ -69,7 +68,7 @@ function download_backup
 
 function create_backup
 {
-	$WP db export "$svndir/mysql/dbbackup_$(date +%F_%s).sql"
+	$WP db export "$MYSQLDIR/dbbackup_$(date +%F_%s).sql"
 }
 
 function exit_clean
@@ -79,7 +78,7 @@ function exit_clean
 
 function init_mysql
 {
-	name="$(grep DB_ $svndir/web/wp-config.php)"
+	name="$(grep DB_ $WEBDIR/wp-config.php)"
 
 	re="define ?\( ?'DB_NAME' ?, ?'([^']+)' ?\);"    
 	if [[ $name =~ $re ]]; then 
@@ -122,13 +121,17 @@ function init_mysql
 	fi
 	
 	DB_EXISTS="$($MSQL "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$MSQL_DB';")"
+
 	if [ -z "$DB_EXISTS" ];  then
+
 		echo "Creating new database: $MSQL_DB"
 		$MSQL "CREATE DATABASE $MSQL_DB;"
 		$MSQL "GRANT ALL ON $MSQL_DB.* TO '$MSQL_USER'@'%';"
-		LATEST_SQL="$(ls -t $svndir/mysql/*.sql | head -n1)"
+		LATEST_SQL="$(ls -t $MYSQLDIR/*.sql | head -n1)"
+
 		echo "Importing DB: $LATEST_SQL"
-		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h127.0.0.1 "$MSQL_DB" < "$LATEST_SQL"
+		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h$MARIADB_HOST "$MSQL_DB" < "$LATEST_SQL"
+
 		if ! [ "$?" -eq 0 ]; then
 			echo "Could not import DB, exiting..." 
 			exit_clean
@@ -138,21 +141,21 @@ function init_mysql
 
 function search-replace
 {
-	if ! [ -z "$PRO_DOM" ] && ! [ -z "$TEST_DOM" ];  then
-		echo "Search replacing: https://$PRO_DOM"
-		$WP search-replace "https://$PRO_DOM" "http://$PRO_DOM"
+	if ! [ -z "$DOMAIN" ] && ! [ -z "$TEST_DOMAIN" ];  then
+		echo "Search replacing: https://$DOMAIN"
+		$WP search-replace "https://$DOMAIN" "http://$DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
-		echo "Search replacing: https://www.$PRO_DOM"
-		$WP search-replace "https://www.$PRO_DOM" "http://www.$PRO_DOM"
+		echo "Search replacing: https://www.$DOMAIN"
+		$WP search-replace "https://www.$DOMAIN" "http://www.$DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
-		echo "Search replacing: $PRO_DOM with $TEST_DOM"
-		$WP search-replace "$PRO_DOM" "$TEST_DOM"
+		echo "Search replacing: $DOMAIN with $TEST_DOMAIN"
+		$WP search-replace "$DOMAIN" "$TEST_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
@@ -202,3 +205,8 @@ function old_loop
 init_from_backup
 init_mysql
 search-replace
+
+while true
+do
+	sleep 30
+done
