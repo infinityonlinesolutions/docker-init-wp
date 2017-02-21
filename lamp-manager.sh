@@ -7,7 +7,7 @@ export WEBDIR=/opt/backup/web
 export APACHEWEBDIR=/var/www/html
 export MYSQLDIR=/opt/backup/mysql
 
-export MSQL="mysql -uroot -p$MARIADB_PASSWORD -h$MARIADB_HOST -e"
+export MSQL="mysql -uroot -p$MYSQL_ROOT_PASSWORD -h$MYSQL_HOST -e"
 export WP="wp --allow-root --path=$WEBDIR"
 
 function init_from_backup
@@ -33,7 +33,7 @@ function init_from_backup
 	fi
 
 	echo "Replacing strings in config files"
-	sed -i s/localhost/$MARIADB_HOST/g wp-config.php
+	sed -i s/localhost/$MYSQL_HOST/g wp-config.php
 	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
 	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/var\\/www\\/html\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
@@ -131,7 +131,7 @@ function init_mysql
 		LATEST_SQL="$(ls -t $MYSQLDIR/*.sql | head -n1)"
 
 		echo "Importing DB: $LATEST_SQL"
-		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h$MARIADB_HOST "$MSQL_DB" < "$LATEST_SQL"
+		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h$MYSQL_HOST "$MSQL_DB" < "$LATEST_SQL"
 
 		if ! [ "$?" -eq 0 ]; then
 			echo "Could not import DB, exiting..." 
