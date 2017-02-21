@@ -39,9 +39,9 @@ function init_from_backup
 
 	echo "Linking uploads direcorty to live site"
 	(echo "#route all access to downloads directory to real site
-	RewriteRule ^wp-content/uploads/(.*)$ http://www.$DOMAIN/wp-content/uploads/\$1 [R=302,L]
+RewriteRule ^wp-content/uploads/(.*)$ http://www.$DOMAIN/wp-content/uploads/\$1 [R=302,L]
 
-	" && cat .htaccess) > .htaccess.tmp
+" && cat .htaccess) > .htaccess.tmp
 	mv .htaccess.tmp .htaccess
 }
 
