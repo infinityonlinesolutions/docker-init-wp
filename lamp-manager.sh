@@ -4,6 +4,7 @@
 
 
 export WEBDIR=/opt/backup/web
+export APACHEWEBDIR=/var/www/html
 export MYSQLDIR=/opt/backup/mysql
 
 export MSQL="mysql -uroot -p$MARIADB_PASSWORD -h$MARIADB_HOST -e"
@@ -33,8 +34,8 @@ function init_from_backup
 
 	echo "Replacing strings in config files"
 	sed -i s/localhost/$MARIADB_HOST/g wp-config.php
-	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/opt\\/backup\\/web\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
-	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/opt\\/backup\\/web\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
+	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
+	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/var\\/www\\/html\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
 	echo "Linking uploads direcorty to live site"
 	(echo "#route all access to downloads directory to real site
