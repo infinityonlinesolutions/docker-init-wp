@@ -10,7 +10,7 @@ export MYSQLDIR=/opt/backup/mysql
 export MSQL="mysql -uroot -p$MYSQL_ROOT_PASSWORD -h$MYSQL_HOST -e"
 export WP="wp --allow-root --path=$WEBDIR"
 
-SQLFIX=$(cat <<EOF
+SQLHEADER=$(cat <<EOF
 -- MySQL dump 10.13  Distrib 5.5.52, for debian-linux-gnu (i686)
 --
 -- Host: localhost    Database: xc218_db1
@@ -94,6 +94,10 @@ function create_backup
 
 function exit_clean
 {
+	while true
+	do
+		sleep 30
+	done
 	exit 1
 }
 
@@ -153,9 +157,9 @@ function init_mysql
 		echo "Importing DB: $LATEST_SQL"
 
 		grep "MySQL dump" "$LATEST_SQL"
-		if [ "$?" -eq 0 ]; then
+		if [ "$?" -eq 1 ]; then
 			echo "MySQL header missing, adding to sql file..."
-			(echo $SQLHEADER && cat "$LATEST_SQL") > "$LATEST_SQL.tmp"
+			(echo "$SQLHEADER" && cat "$LATEST_SQL") > "$LATEST_SQL.tmp"
 			mv "$LATEST_SQL.tmp" "$LATEST_SQL"
 		fi
 
