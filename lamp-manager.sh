@@ -10,6 +10,26 @@ export MYSQLDIR=/opt/backup/mysql
 export MSQL="mysql -uroot -p$MYSQL_ROOT_PASSWORD -h$MYSQL_HOST -e"
 export WP="wp --allow-root --path=$WEBDIR"
 
+SQLFIX=$(cat <<EOF
+-- MySQL dump 10.13  Distrib 5.5.52, for debian-linux-gnu (i686)
+--
+-- Host: localhost    Database: xc218_db1
+-- ------------------------------------------------------
+-- Server version       5.5.52-0+deb7u1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+EOF
+)
+
 function init_from_backup
 {
 	mkdir -p $WEBDIR $MYSQLDIR
@@ -131,6 +151,14 @@ function init_mysql
 		LATEST_SQL="$(ls -t $MYSQLDIR/*.sql | head -n1)"
 
 		echo "Importing DB: $LATEST_SQL"
+
+		grep "MySQL dump" "$LATEST_SQL"
+		if [ "$?" -eq 0 ]; then
+			echo "MySQL header missing, adding to sql file..."
+			(echo $SQLHEADER && cat "$LATEST_SQL") > "$LATEST_SQL.tmp"
+			mv "$LATEST_SQL.tmp" "$LATEST_SQL"
+		fi
+
 		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h$MYSQL_HOST "$MSQL_DB" < "$LATEST_SQL"
 
 		if ! [ "$?" -eq 0 ]; then
