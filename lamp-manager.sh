@@ -3,9 +3,9 @@
 #DOMAIN=$1
 
 
-export WEBDIR=/opt/backup/web
+export WEBDIR=/var/www/html
 export APACHEWEBDIR=/var/www/html
-export MYSQLDIR=/opt/backup/mysql
+export MYSQLDIR=/var/www/mysql
 
 export MSQL="mysql -uroot -p$MYSQL_ROOT_PASSWORD -h$MYSQL_HOST -e"
 export WP="wp --allow-root --path=$WEBDIR"
@@ -33,7 +33,7 @@ EOF
 function init_from_backup
 {
 	mkdir -p $WEBDIR $MYSQLDIR
-	cd /opt/backup
+	cd /var/www
 
 	download_backup
 
@@ -59,7 +59,7 @@ function init_from_backup
 
 	echo "Linking uploads direcorty to live site"
 	(echo "#route all access to downloads directory to real site
-RewriteRule ^wp-content/uploads/(.*)$ http://www.$DOMAIN/wp-content/uploads/\$1 [R=302,L]
+RewriteRule ^wp-content/uploads/(.*)$ http://www.$WEB_DOMAIN/wp-content/uploads/\$1 [R=302,L]
 
 " && cat .htaccess) > .htaccess.tmp
 	mv .htaccess.tmp .htaccess
@@ -72,7 +72,7 @@ function download_backup_dummy
 
 function download_backup
 {
-	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
+	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
 	FILEINFO="$(gdrive list -q " '$FOLDERID' in parents" --no-header | head -n1)"
 #	FILEDATE=$(echo $FILEINFO | awk '{print $5;}')
 	FILEID=$(echo $FILEINFO | awk '{print $1;}')
@@ -94,7 +94,7 @@ function create_backup
 
 function exit_clean
 {
-	while true
+	while $DEBUGGING
 	do
 		sleep 30
 	done
@@ -174,65 +174,26 @@ function init_mysql
 
 function search-replace
 {
-	if ! [ -z "$DOMAIN" ] && ! [ -z "$TEST_DOMAIN" ];  then
-		echo "Search replacing: https://$DOMAIN"
-		$WP search-replace "https://$DOMAIN" "http://$DOMAIN"
+	if ! [ -z "$WEB_DOMAIN" ] && ! [ -z "$WEB_TEST_DOMAIN" ];  then
+		echo "Search replacing: https://$WEB_DOMAIN"
+		$WP search-replace "https://$WEB_DOMAIN" "http://$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
-		echo "Search replacing: https://www.$DOMAIN"
-		$WP search-replace "https://www.$DOMAIN" "http://www.$DOMAIN"
+		echo "Search replacing: https://www.$WEB_DOMAIN"
+		$WP search-replace "https://www.$WEB_DOMAIN" "http://www.$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
-		echo "Search replacing: $DOMAIN with $TEST_DOMAIN"
-		$WP search-replace "$DOMAIN" "$TEST_DOMAIN"
+		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
+		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
 	fi
-}
-
-function old_loop
-{
-	trap "rm -f $pipe" EXIT
-	
-	if [[ ! -p $pipe ]]; then
-	    mkfifo $pipe
-	fi
-
-	supervisorctl stop apache:apached
-
-	if [ -e "/opt/php-ini/php.ini" ]; then
-		cp /opt/php-ini/php.ini /opt/docker/etc/php/php.ini
-		supervisorctl restart php-fpm:php-fpmd
-	fi
-	
-	while true
-	do
-	    if read line <$pipe; then
-		echo "Received command: $line"
-
-		if [[ "$line" == 'SVNSYNCED' ]]; then
-		    init_mysql
-		    search-replace
-		fi
-	    fi
-	done
-
-	while true
-	do
-		if [ -e "$svndir/com/dbbackup" ]; then
-			create_backup
-			rm "$svndir/com/dbbackup"
-		fi
-		sleep 30
-	done
-	
-	echo "rokk-ops script exiting"
 }
 
 init_from_backup
