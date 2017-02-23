@@ -32,6 +32,10 @@ EOF
 
 function init_from_backup
 {
+	if [ "$SVN_ENABLED" -eq 1 ]; then
+		export WEBDIR=/var/www/backup
+	fi
+
 	mkdir -p $WEBDIR $MYSQLDIR
 	cd /var/www
 
@@ -65,11 +69,6 @@ RewriteRule ^wp-content/uploads/(.*)$ http://www.$WEB_DOMAIN/wp-content/uploads/
 	mv .htaccess.tmp .htaccess
 }
 
-function download_backup_dummy
-{
-	cp /root/.gdrive/*.zip .
-}
-
 function download_backup
 {
 	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
@@ -85,11 +84,6 @@ function download_backup
 		echo "Failed to download backup file from gdrive, exiting..." 
 		exit_clean
 	fi
-}
-
-function create_backup
-{
-	$WP db export "$MYSQLDIR/dbbackup_$(date +%F_%s).sql"
 }
 
 function exit_clean
