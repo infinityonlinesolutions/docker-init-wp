@@ -56,6 +56,8 @@ function init_from_backup
 		mv iwp_db/*sql $MYSQLDIR
 	fi
 
+	rm -r iwp_db/
+
 	echo "Replacing strings in config files"
 	sed -i s/localhost/$MYSQL_HOST/g wp-config.php
 	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
