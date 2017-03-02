@@ -74,8 +74,14 @@ RewriteRule ^wp-content/uploads/(.*)$ http://www.$WEB_DOMAIN/wp-content/uploads/
 function download_backup
 {
 	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
-	FILEINFO="$(gdrive list -q " '$FOLDERID' in parents" --no-header | head -n1)"
-#	FILEDATE=$(echo $FILEINFO | awk '{print $5;}')
+	FILELIST="$(gdrive list -q " '$FOLDERID' in parents" --no-header)"
+	while read -r line; do
+		# ommit unfinished backups
+		if ! [[ "$line" == *"part_1"* ]]; then
+			FILEINFO="$line"
+			break
+		fi
+	done <<< "$FILELIST"
 	FILEID=$(echo $FILEINFO | awk '{print $1;}')
 	
 	echo "Downloading: $FILEINFO"
