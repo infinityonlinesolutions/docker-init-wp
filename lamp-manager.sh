@@ -41,8 +41,8 @@ function init_from_backup
 
 	download_backup
 
-	echo "Unzipping backup to $WEBDIR"
-	unzip *.zip -d $WEBDIR
+	echo "Unzipping backup(s) to $WEBDIR"
+	find . -name '*.zip' | xargs -l unzip -d $WEBDIR
 
 	cd $WEBDIR
 
@@ -76,22 +76,23 @@ function download_backup
 	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
 	FILELIST="$(gdrive list -q " '$FOLDERID' in parents" --no-header)"
 	while read -r line; do
-		# ommit unfinished backups
-		if ! [[ "$line" == *"part_1"* ]]; then
-			FILEINFO="$line"
+		
+		FILEID=$(echo "$line" | awk '{print $1;}')
+	
+		echo "Downloading: $FILEINFO"
+
+		gdrive download $FILEID
+
+		if ! [ "$?" -eq 0 ]; then
+			echo "Failed to download backup file from gdrive, exiting..." 
+			exit_clean
+		fi
+
+		# quit if not part of backup
+		if ! [[ "$line" == *"part_"* ]]; then
 			break
 		fi
 	done <<< "$FILELIST"
-	FILEID=$(echo $FILEINFO | awk '{print $1;}')
-	
-	echo "Downloading: $FILEINFO"
-
-	gdrive download $FILEID
-
-	if ! [ "$?" -eq 0 ]; then
-		echo "Failed to download backup file from gdrive, exiting..." 
-		exit_clean
-	fi
 }
 
 function exit_clean
