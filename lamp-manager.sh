@@ -190,6 +190,12 @@ function search-replace
 			echo "Search replace failed, exiting..." 
 			exit_clean
 		fi
+		echo "Search replacing: http://www.$WEB_DOMAIN with http://$WEB_DOMAIN"
+		$WP search-replace "http://www.$WEB_DOMAIN" "http://$WEB_DOMAIN"
+		if ! [ "$?" -eq 0 ]; then
+			echo "Search replace failed, exiting..." 
+			exit_clean
+		fi
 		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
 		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
