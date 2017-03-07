@@ -32,14 +32,48 @@ EOF
 
 function init_from_gdrive
 {
+
+}
+
+function init_from_file
+{
+	BACKUP_FILE="backup.zip"
+	BACKUP_FILE_HASH="backup.zip.sha256"
+
+	cd $WEBDIR
+
+	while true
+	do
+		if [ -e $BACKUP_FILE ] && [ -e $BACKUP_FILE_HASH ]; then
+			sha256sum -c $BACKUP_FILE_HASH
+			if [ "$?" -eq 0 ]; then
+				rm $BACKUP_FILE_HASH
+				mv $BACKUP_FILE ../
+				break
+			fi
+		fi
+    echo "Waiting for backup..."
+		sleep 30
+	done
+}
+
+function init_backup
+{
+
 	if [ "$SVN_ENABLED" -eq 1 ]; then
 		export WEBDIR=/var/www/backup
 	fi
 
 	mkdir -p $WEBDIR $MYSQLDIR
+
 	cd /var/www
 
-	download_backup
+	if [ $BACKUP_FROM_FILE -eq 1 ]; then
+		init_from_file
+		cd /var/www
+	else
+		download_backup
+	fi
 
 	echo "Unzipping backup(s) to $WEBDIR"
 	find . -name '*.zip' | xargs -l unzip -d $WEBDIR
@@ -54,56 +88,6 @@ function init_from_gdrive
 	fi
 
 	rm -r iwp_db/
-}
-
-function init_from_file
-{
-	BACKUP_FILE="backup.tar.gz"
-	BACKUP_FILE_HASH="backup.tar.gz.sha256"
-
-	SQL_FILE="backup.sql"
-	SQL_FILE_HASH="backup.sql.sha256"
-
-	cd $WEBDIR
-
-	while true
-	do
-		if [ -e $BACKUP_FILE ] && [ -e $BACKUP_FILE_HASH ]; then
-			sha256sum -c $BACKUP_FILE_HASH
-			if [ "$?" -eq 0 ]; then
-				tar -xzvf $BACKUP_FILE
-				rm $BACKUP_FILE $BACKUP_FILE_HASH
-				break
-			fi
-		fi
-
-		sleep 30
-	done
-
-	while true
-	do
-		if [ -e $SQL_FILE ] && [ -e $SQL_FILE_HASH ]; then
-			sha256sum -c $SQL_FILE_HASH
-			if [ "$?" -eq 0 ]; then
-				mv $SQL_FILE $MYSQLDIR/backup.sql
-				rm $SQL_FILE_HASH
-				break
-			fi
-		fi
-
-		if [ -d "mysql" ]; then
-			SQL_FILE="mysql/*.sql"
-			SQL_FILE_HASH="$SQL_FILE.sha256"
-			sha256sum $SQL_FILE > $SQL_FILE_HASH
-		fi
-
-		sleep 30
-	done
-}
-
-function init_backup
-{
-	cd $WEBDIR
 
 	echo "Removing cache and uploads directory"
 	rm -r wp-content/uploads/ wp-content/cache/
@@ -254,12 +238,6 @@ function search-replace
 		fi
 	fi
 }
-
-if [ $BACKUP_FROM_FILE -eq 1 ]; then
-	init_from_file
-else
-	init_from_gdrive
-fi
 
 init_backup
 init_mysql
