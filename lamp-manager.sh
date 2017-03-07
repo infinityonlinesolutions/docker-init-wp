@@ -30,7 +30,7 @@ SQLHEADER=$(cat <<EOF
 EOF
 )
 
-function init_from_backup
+function init_from_gdrive
 {
 	if [ "$SVN_ENABLED" -eq 1 ]; then
 		export WEBDIR=/var/www/backup
@@ -46,17 +46,67 @@ function init_from_backup
 
 	cd $WEBDIR
 
-	echo "Removing cache and uploads directory"
-	rm -r wp-content/uploads/ wp-content/cache/
-
 	echo "Getting sql file"
-	if ! [  1 == "$(find iwp_db/ -name '*.sql' | grep -c sql)" ]; then 
+	if ! [  1 == "$(find iwp_db/ -name '*.sql' | grep -c sql)" ]; then
 		find . -name "*.sql" | awk '{print substr( $0, length($0) - 8, length($0) ),$0}' | sort -n  | cut -f2- -d' ' | xargs cat >  $MYSQLDIR/backup.sql
 	else
 		mv iwp_db/*sql $MYSQLDIR
 	fi
 
 	rm -r iwp_db/
+}
+
+function init_from_file
+{
+	BACKUP_FILE="backup.tar.gz"
+	BACKUP_FILE_HASH="backup.tar.gz.sha256"
+
+	SQL_FILE="backup.sql"
+	SQL_FILE_HASH="backup.sql.sha256"
+
+	cd $WEBDIR
+
+	while true
+	do
+		if [ -e $BACKUP_FILE ] && [ -e $BACKUP_FILE_HASH ]; then
+			sha256sum -c $BACKUP_FILE_HASH
+			if [ "$?" -eq 0 ]; then
+				tar -xzvf $BACKUP_FILE
+				rm $BACKUP_FILE $BACKUP_FILE_HASH
+				break
+			fi
+		fi
+
+		sleep 30
+	done
+
+	while true
+	do
+		if [ -e $SQL_FILE ] && [ -e $SQL_FILE_HASH ]; then
+			sha256sum -c $SQL_FILE_HASH
+			if [ "$?" -eq 0 ]; then
+				mv $SQL_FILE $MYSQLDIR/backup.sql
+				rm $SQL_FILE_HASH
+				break
+			fi
+		fi
+
+		if [ -d "mysql" ]; then
+			SQL_FILE="mysql/*.sql"
+			SQL_FILE_HASH="$SQL_FILE.sha256"
+			sha256sum $SQL_FILE > $SQL_FILE_HASH
+		fi
+
+		sleep 30
+	done
+}
+
+function init_backup
+{
+	cd $WEBDIR
+
+	echo "Removing cache and uploads directory"
+	rm -r wp-content/uploads/ wp-content/cache/
 
 	echo "Replacing strings in config files"
 	sed -i s/localhost/$MYSQL_HOST/g wp-config.php
@@ -76,15 +126,15 @@ function download_backup
 	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
 	FILELIST="$(gdrive list -q " '$FOLDERID' in parents" --no-header)"
 	while read -r line; do
-		
+
 		FILEID=$(echo "$line" | awk '{print $1;}')
-	
+
 		echo "Downloading: $FILEINFO"
 
 		gdrive download $FILEID
 
 		if ! [ "$?" -eq 0 ]; then
-			echo "Failed to download backup file from gdrive, exiting..." 
+			echo "Failed to download backup file from gdrive, exiting..."
 			exit_clean
 		fi
 
@@ -108,46 +158,46 @@ function init_mysql
 {
 	name="$(grep DB_ $WEBDIR/wp-config.php)"
 
-	re="define ?\( ?'DB_NAME' ?, ?'([^']+)' ?\);"    
-	if [[ $name =~ $re ]]; then 
-		MSQL_DB=${BASH_REMATCH[1]}; 
+	re="define ?\( ?'DB_NAME' ?, ?'([^']+)' ?\);"
+	if [[ $name =~ $re ]]; then
+		MSQL_DB=${BASH_REMATCH[1]};
 	else
 		echo "Could not get DB Name from wp-config.php. Aborting."
 		exit_clean
 	fi
 
 	re="define ?\( ?'DB_USER' ?, ?'([^']+)' ?\);"
-	if [[ $name =~ $re ]]; then 
-		MSQL_USER=${BASH_REMATCH[1]}; 
+	if [[ $name =~ $re ]]; then
+		MSQL_USER=${BASH_REMATCH[1]};
 	else
 		echo "Could not get DB User from wp-config.php. Aborting."
 		exit_clean
 	fi
-	
+
 	re="define ?\( ?'DB_PASSWORD' ?, ?'([^']+)' ?\);"
-	if [[ $name =~ $re ]]; then 
-		MSQL_PASS=${BASH_REMATCH[1]}; 
+	if [[ $name =~ $re ]]; then
+		MSQL_PASS=${BASH_REMATCH[1]};
 	else
 		echo "Could not get DB Password from wp-config.php. Aborting."
 		exit_clean
 	fi
-	
+
 	until $MSQL ";"
 	do
 		echo "Can't connect to mysql, retrying in 30 seconds."
 		sleep 30
 	done
-	
+
 	USER_EXISTS="$($MSQL "SELECT user FROM mysql.user WHERE user = '$MSQL_USER';")"
 	if [ -z "$USER_EXISTS" ];  then
 		echo "Creating new user: $MSQL_USER"
 		$MSQL "CREATE USER '$MSQL_USER'@'%' IDENTIFIED BY '$MSQL_PASS';"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Could not create user, exiting..." 
+			echo "Could not create user, exiting..."
 			exit_clean
 		fi
 	fi
-	
+
 	DB_EXISTS="$($MSQL "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '$MSQL_DB';")"
 
 	if [ -z "$DB_EXISTS" ];  then
@@ -169,7 +219,7 @@ function init_mysql
 		mysql -u"$MSQL_USER" -p"$MSQL_PASS" -h$MYSQL_HOST "$MSQL_DB" < "$LATEST_SQL"
 
 		if ! [ "$?" -eq 0 ]; then
-			echo "Could not import DB, exiting..." 
+			echo "Could not import DB, exiting..."
 			exit_clean
 		fi
 	fi
@@ -181,31 +231,37 @@ function search-replace
 		echo "Search replacing: https://$WEB_DOMAIN"
 		$WP search-replace "https://$WEB_DOMAIN" "http://$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..." 
+			echo "Search replace failed, exiting..."
 			exit_clean
 		fi
 		echo "Search replacing: https://www.$WEB_DOMAIN"
 		$WP search-replace "https://www.$WEB_DOMAIN" "http://www.$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..." 
+			echo "Search replace failed, exiting..."
 			exit_clean
 		fi
 		echo "Search replacing: http://www.$WEB_DOMAIN with http://$WEB_DOMAIN"
 		$WP search-replace "http://www.$WEB_DOMAIN" "http://$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..." 
+			echo "Search replace failed, exiting..."
 			exit_clean
 		fi
 		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
 		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..." 
+			echo "Search replace failed, exiting..."
 			exit_clean
 		fi
 	fi
 }
 
-init_from_backup
+if [ $BACKUP_FROM_FILE -eq 1 ]; then
+	init_from_file
+else
+	init_from_gdrive
+fi
+
+init_backup
 init_mysql
 search-replace
 
