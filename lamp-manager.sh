@@ -30,11 +30,6 @@ SQLHEADER=$(cat <<EOF
 EOF
 )
 
-function init_from_gdrive
-{
-
-}
-
 function init_from_file
 {
 	BACKUP_FILE="backup.zip"
