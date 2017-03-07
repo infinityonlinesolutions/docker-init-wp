@@ -238,6 +238,8 @@ init_backup
 init_mysql
 search-replace
 
+echo 'Import completed successfully.'
+
 while true
 do
 	sleep 30
