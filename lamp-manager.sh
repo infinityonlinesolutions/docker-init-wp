@@ -32,13 +32,16 @@ EOF
 
 function init_from_file
 {
-	BACKUP_FILE="backup.zip"
-	BACKUP_FILE_HASH="backup.zip.sha256"
+
 
 	cd $WEBDIR
 
 	while true
 	do
+		
+		BACKUP_FILE="$(find . -name '*.zip' | head -n1)"
+		BACKUP_FILE_HASH="$(find . -name '*.sha256' | head -n1)"
+
 		if [ -e $BACKUP_FILE ] && [ -e $BACKUP_FILE_HASH ]; then
 			sha256sum -c $BACKUP_FILE_HASH
 			if [ "$?" -eq 0 ]; then
