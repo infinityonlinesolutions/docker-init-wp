@@ -1,7 +1,7 @@
 FROM debian:stable-slim
 
 RUN apt-get update \
-    && apt-get install -y mysql-client subversion php5-cli php5-mysql curl unzip \
+    && apt-get install -y mysql-client subversion php5-cli php5-mysql php5-curl curl unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man /usr/share/locale /usr/share/info /usr/share/lintian
@@ -12,5 +12,3 @@ RUN curl -L -o /usr/local/bin/gdrive 'https://docs.google.com/uc?id=0B3X9GlR6Emb
 COPY lamp-manager.sh /
 
 CMD ["bash", "lamp-manager.sh"]
-
-
