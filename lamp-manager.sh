@@ -213,33 +213,37 @@ function search-replace
 		echo "Search replacing: https://$WEB_DOMAIN"
 		$WP search-replace "https://$WEB_DOMAIN" "http://$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..."
-			exit_clean
+			return 1
 		fi
 		echo "Search replacing: https://www.$WEB_DOMAIN"
 		$WP search-replace "https://www.$WEB_DOMAIN" "http://www.$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..."
-			exit_clean
+			return 1
 		fi
 		echo "Search replacing: http://www.$WEB_DOMAIN with http://$WEB_DOMAIN"
 		$WP search-replace "http://www.$WEB_DOMAIN" "http://$WEB_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..."
-			exit_clean
+			return 1
 		fi
 		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
 		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
 		if ! [ "$?" -eq 0 ]; then
-			echo "Search replace failed, exiting..."
-			exit_clean
+			return 1
 		fi
 	fi
+
+	return 0
 }
 
 init_backup
 init_mysql
-search-replace
+
+while search-replace
+do
+	echo "Search Replace failed, retrying in 30 seconds"
+	sleep 30
+done
+
 
 echo 'Import completed successfully.'
 
