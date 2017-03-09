@@ -129,7 +129,7 @@ function download_backup
 
 function exit_clean
 {
-	while $DEBUGGING
+	while "$DEBUGGING" -eq 1
 	do
 		sleep 30
 	done
