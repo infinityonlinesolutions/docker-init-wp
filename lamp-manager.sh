@@ -91,7 +91,7 @@ function init_backup
 	rm -r wp-content/uploads/ wp-content/cache/
 
 	echo "Replacing strings in config files"
-	sed -i s/localhost/$MYSQL_HOST/g wp-config.php
+	sed -i 's/localhost(:[0-9]*)?/$MYSQL_HOST/g' wp-config.php
 	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
 	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/var\\/www\\/html\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
