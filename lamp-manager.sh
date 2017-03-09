@@ -238,7 +238,7 @@ function search-replace
 init_backup
 init_mysql
 
-while search-replace
+until search-replace
 do
 	echo "Search Replace failed, retrying in 30 seconds"
 	sleep 30
