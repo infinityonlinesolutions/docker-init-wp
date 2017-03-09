@@ -38,7 +38,7 @@ function init_from_file
 
 	while true
 	do
-		
+
 		BACKUP_FILE="$(find . -name '*.zip' | head -n1)"
 		BACKUP_FILE_HASH="$(find . -name '*.sha256' | head -n1)"
 
@@ -66,7 +66,7 @@ function init_backup
 
 	cd /var/www
 
-	if [ $BACKUP_FROM_FILE -eq 1 ]; then
+	if [ "$BACKUP_FROM_FILE" -eq 1 ]; then
 		init_from_file
 		cd /var/www
 	else
@@ -105,15 +105,15 @@ RewriteRule ^wp-content/uploads/(.*)$ http://www.$WEB_DOMAIN/wp-content/uploads/
 
 function download_backup
 {
-	FOLDERID="$(gdrive list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
-	FILELIST="$(gdrive list -q " '$FOLDERID' in parents" --no-header)"
+	FOLDERID="$(gdrive -c /.gdrive/ list -q " '0B2N6Wd7gFxkvU21oVUtBaHQzbDA' in parents and name='$WEB_DOMAIN'" --no-header | head -n1 | awk '{print $1;}')"
+	FILELIST="$(gdrive -c /.gdrive/ list -q " '$FOLDERID' in parents" --no-header)"
 	while read -r line; do
 
 		FILEID=$(echo "$line" | awk '{print $1;}')
 
 		echo "Downloading: $FILEINFO"
 
-		gdrive download $FILEID
+		gdrive -c /.gdrive/ download $FILEID
 
 		if ! [ "$?" -eq 0 ]; then
 			echo "Failed to download backup file from gdrive, exiting..."

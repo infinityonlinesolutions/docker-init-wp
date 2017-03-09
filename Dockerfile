@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM lead4good/lamp-php:latest
 
 RUN apt-get update \
     && apt-get install -y mysql-client subversion php5-cli php5-mysql php5-curl curl unzip \
