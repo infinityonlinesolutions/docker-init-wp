@@ -9,6 +9,7 @@ RUN apt-get update \
 RUN curl -o /usr/local/bin/wp 'https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar' && chmod +x /usr/local/bin/wp
 RUN curl -L -o /usr/local/bin/gdrive 'https://docs.google.com/uc?id=0B3X9GlR6EmbnQ0FtZmJJUXEyRTA&export=download' && chmod +x /usr/local/bin/gdrive
 
+RUN mkdir /var/www/mysql /var/www/backup && chown www-data:www-data /var/www/*
 USER www-data
 
 COPY lamp-manager.sh /
