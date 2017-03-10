@@ -95,6 +95,11 @@ function init_backup
 	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
 	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/var\\/www\\/html\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
+	if [ -z "$OLD_HTTP_ROOT" ]; then
+		echo "Search and Replacing old http root dir entries"
+		grep -lr "$OLD_HTTP_ROOT" . | xargs -l sed -i "s/$(echo ${OLD_HTTP_ROOT//\//\\/})/\/var\/www\/html\//"
+	fi
+
 	echo "Linking uploads direcorty to live site"
 	(echo "#route all access to downloads directory to real site
 RewriteRule ^wp-content/uploads/(.*)$ http://www.$WEB_DOMAIN/wp-content/uploads/\$1 [R=302,L]
