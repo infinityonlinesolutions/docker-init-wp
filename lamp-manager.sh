@@ -95,7 +95,7 @@ function init_backup
 	sed -i s/^.*WPCACHEHOME.*$/define\(\'WPCACHEHOME\',\'\\/var\\/www\\/html\\/wp-content\\/plugins\\/wp-super-cache\\/\'\)\;/g wp-config.php
 	sed -i s/^\$cache_path.*$/\$cache_path=\'\\/var\\/www\\/html\\/wp-content\\/cache\'\;/g wp-content/wp-cache-config.php
 
-	if [ -z "$OLD_HTTP_ROOT" ]; then
+	if ! [ -z "$OLD_HTTP_ROOT" ]; then
 		echo "Search and Replacing old http root dir entries"
 		grep -lr "$OLD_HTTP_ROOT" . | xargs -l sed -i "s/$(echo ${OLD_HTTP_ROOT//\//\\/})/\/var\/www\/html\//"
 	fi
