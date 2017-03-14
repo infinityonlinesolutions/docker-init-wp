@@ -141,6 +141,34 @@ function exit_clean
 	exit 1
 }
 
+function search-replace
+{
+	if ! [ -z "$WEB_DOMAIN" ] && ! [ -z "$WEB_TEST_DOMAIN" ];  then
+		echo "Search replacing: https://$WEB_DOMAIN"
+		$WP search-replace "https://$WEB_DOMAIN" "http://$WEB_DOMAIN"
+		if ! [ "$?" -eq 0 ]; then
+			return 1
+		fi
+		echo "Search replacing: https://www.$WEB_DOMAIN"
+		$WP search-replace "https://www.$WEB_DOMAIN" "http://www.$WEB_DOMAIN"
+		if ! [ "$?" -eq 0 ]; then
+			return 1
+		fi
+		echo "Search replacing: http://www.$WEB_DOMAIN with http://$WEB_DOMAIN"
+		$WP search-replace "http://www.$WEB_DOMAIN" "http://$WEB_DOMAIN"
+		if ! [ "$?" -eq 0 ]; then
+			return 1
+		fi
+		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
+		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
+		if ! [ "$?" -eq 0 ]; then
+			return 1
+		fi
+	fi
+
+	return 0
+}
+
 function init_mysql
 {
 	name="$(grep DB_ $WEBDIR/wp-config.php)"
@@ -209,48 +237,23 @@ function init_mysql
 			echo "Could not import DB, exiting..."
 			exit_clean
 		fi
+
+		until search-replace
+		do
+			echo "Search Replace failed, retrying in 30 seconds"
+			sleep 30
+		done
 	fi
 }
 
-function search-replace
-{
-	if ! [ -z "$WEB_DOMAIN" ] && ! [ -z "$WEB_TEST_DOMAIN" ];  then
-		echo "Search replacing: https://$WEB_DOMAIN"
-		$WP search-replace "https://$WEB_DOMAIN" "http://$WEB_DOMAIN"
-		if ! [ "$?" -eq 0 ]; then
-			return 1
-		fi
-		echo "Search replacing: https://www.$WEB_DOMAIN"
-		$WP search-replace "https://www.$WEB_DOMAIN" "http://www.$WEB_DOMAIN"
-		if ! [ "$?" -eq 0 ]; then
-			return 1
-		fi
-		echo "Search replacing: http://www.$WEB_DOMAIN with http://$WEB_DOMAIN"
-		$WP search-replace "http://www.$WEB_DOMAIN" "http://$WEB_DOMAIN"
-		if ! [ "$?" -eq 0 ]; then
-			return 1
-		fi
-		echo "Search replacing: $WEB_DOMAIN with $WEB_TEST_DOMAIN"
-		$WP search-replace "$WEB_DOMAIN" "$WEB_TEST_DOMAIN"
-		if ! [ "$?" -eq 0 ]; then
-			return 1
-		fi
-	fi
+if [ ! -d "/var/www/mysql" ]; then
+	init_backup
+	init_mysql
 
-	return 0
-}
-
-init_backup
-init_mysql
-
-until search-replace
-do
-	echo "Search Replace failed, retrying in 30 seconds"
-	sleep 30
-done
-
-
-echo 'Import completed successfully.'
+	echo 'Import completed successfully.'
+else
+	echo "Already initialized, doing nothing."
+fi
 
 while true
 do
