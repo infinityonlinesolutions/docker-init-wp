@@ -246,7 +246,7 @@ function init_mysql
 	fi
 }
 
-if [ ! -d "/var/www/mysql" ]; then
+if [ ! -f "/var/www/mysql/*sql" ]; then
 	init_backup
 	init_mysql
 
