@@ -88,7 +88,10 @@ function init_backup
 	rm -r iwp_db/
 
 	echo "Removing cache and uploads directory"
-	rm -r wp-content/uploads/ wp-content/cache/
+	rm -rf wp-content/uploads/ wp-content/cache/
+
+	echo "Removing php.ini, if exists"
+	rm -f php.ini
 
 	echo "Replacing strings in config files"
 	sed -i -r "s/'DB_HOST' ?, ?'([^']+)'/'DB_HOST', '127.0.0.1'/g" wp-config.php
