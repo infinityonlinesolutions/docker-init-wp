@@ -1,7 +1,7 @@
-FROM lead4good/lamp-mysql
+FROM mysql:5.7
 
 RUN apt-get update \
-    && apt-get install -y vim wget subversion php5-cli php5-mysql php5-curl curl ca-certificates unzip \
+    && apt-get install -y subversion php5-cli php5-mysql php5-curl curl ca-certificates unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man /usr/share/locale /usr/share/info /usr/share/lintian
